@@ -4,28 +4,36 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.todo.task.data.Todo
 import com.todo.task.data.dto.TodoDto
 import com.todo.task.service.TodoService
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyLong
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
 import org.mockito.Mockito.*
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
-@WebMvcTest(TodoController::class)
+@ExtendWith(MockitoExtension::class)
 class TodoControllerTest {
 
-    @Autowired
     private lateinit var mockMvc: MockMvc
 
-    @MockBean
+    @Mock
     private lateinit var todoService: TodoService
 
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+    @InjectMocks
+    private lateinit var todoController: TodoController
+
+    private val objectMapper = ObjectMapper()
+
+    @BeforeEach
+    fun setup() {
+        mockMvc = MockMvcBuilders.standaloneSetup(todoController).build()
+    }
 
     // Helper function to handle Kotlin nullability with Mockito
     private fun <T> anyObject(): T {
@@ -141,6 +149,22 @@ class TodoControllerTest {
     }
 
     @Test
+    fun `createTodo should return 400 when title is missing`() {
+        // Given
+        val invalidJson = """{"completed": false}"""
+
+        // When & Then
+        mockMvc.perform(
+            post("/api/v1/todos")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJson)
+        )
+            .andExpect(status().isBadRequest)
+
+        verify(todoService, never()).createTodo(anyObject())
+    }
+
+    @Test
     fun `updateTodo should update and return todo when it exists`() {
         // Given
         val todoDto = TodoDto(id = 1L, title = "Updated Task", completed = true)
@@ -218,5 +242,4 @@ class TodoControllerTest {
 
         verify(todoService, times(1)).deleteTodoById(999L)
     }
-
 }
